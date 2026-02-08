@@ -8,9 +8,13 @@ import ProfilePage from "./pages/ProfilePage.jsx"
 import SettingsPage from "./pages/SettingsPage.jsx"
 import SignupPage from "./pages/SignupPage.jsx"
 import { useAuthStore } from "./store/useAuthStore.js"
+import { Toaster } from "react-hot-toast"
+
+import { useThemeStore } from "./store/useThemeStore.js"
 
 const App = () => {
   const { authUser, checkAuth, isCheckingAuth } = useAuthStore()
+  const { theme } = useThemeStore()
 
   useEffect(() => {
     checkAuth()
@@ -18,14 +22,17 @@ const App = () => {
 
   if (isCheckingAuth && !authUser) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-gradient-to-r from-purple-500 to-pink-500">
+      <div className="">
         <Loader className="size-10 animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen w-screen items-center justify-center bg-gradient-to-r from-purple-500 to-pink-500">
+    <div
+      data-theme={theme}
+      className="min-h-screen bg-base-100 text-base-content"
+    >
       <Navbar />
 
       <Routes>
@@ -50,6 +57,8 @@ const App = () => {
           element={authUser ? <ProfilePage /> : <Navigate to="/login" />}
         />
       </Routes>
+
+      <Toaster />
     </div>
   )
 }
