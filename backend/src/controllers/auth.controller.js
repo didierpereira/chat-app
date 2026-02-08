@@ -4,9 +4,9 @@ import User from "../models/user.model.js"
 import cloudinary from "../lib/cloudinary.js"
 
 export const signup = async (req, res) => {
-  const { email, fullName, password, profilePic } = req.body
+  const { email, fullName, password } = req.body
 
-  if (!email || !fullName || !password || !profilePic) {
+  if (!email || !fullName || !password) {
     return res
       .status(400)
       .json({ message: "Please provide all required fields" })
@@ -33,7 +33,7 @@ export const signup = async (req, res) => {
       email: email,
       fullName: fullName,
       password: hashedPassword,
-      profilePic: profilePic,
+      profilePic: "",
     })
 
     if (newUser) {
