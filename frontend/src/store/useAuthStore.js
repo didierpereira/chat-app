@@ -1,8 +1,11 @@
 import toast from "react-hot-toast"
 import { create } from "zustand"
 import { axiosInstance } from "../lib/axios.js"
+import { io } from "socket.io-client"
 
-export const useAuthStore = create((set) => ({
+const BASE_URL = "http://localhost:5001"
+
+export const useAuthStore = create((set, get) => ({
   authUser: null,
   isSigningUp: false,
   isLoggingIn: false,
@@ -16,6 +19,7 @@ export const useAuthStore = create((set) => ({
     try {
       const res = await axiosInstance.get("/auth/check")
       set({ authUser: res.data.user })
+      get().connectSocket()
     } catch (error) {
       console.error("Error checking auth:", error)
       set({ authUser: null, isCheckingAuth: false })
@@ -46,6 +50,7 @@ export const useAuthStore = create((set) => ({
       await axiosInstance.post("/auth/logout")
       set({ authUser: null })
       toast.success("Logged out successfully.")
+      get().disconnectSocket()
     } catch (error) {
       console.error("Logout error:", error)
       toast.error("Logout failed. Please try again.")
@@ -58,6 +63,8 @@ export const useAuthStore = create((set) => ({
       const res = await axiosInstance.post("/auth/login", formData)
       set({ authUser: res.data })
       toast.success("Login successful! Welcome back.")
+
+      get().connectSocket()
     } catch (error) {
       console.error("Login error:", error)
       toast.error(
@@ -85,5 +92,17 @@ export const useAuthStore = create((set) => ({
     } finally {
       set({ isUpdatingProfile: false })
     }
+  },
+
+  connectSocket: () => {
+    const { authUser } = get()
+    if (!authUser || get().socket?.connected) return
+    const socket = io(BASE_URL)
+    socket.connect()
+
+    set({ socket: socket })
+  },
+  disconnectSocket: () => {
+    if (get().socket?.connected) get().socket.disconnect()
   },
 }))
