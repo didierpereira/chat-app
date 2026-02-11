@@ -6,9 +6,9 @@ import { connectDB } from "./lib/db.js"
 import authRoutes from "./routes/auth.routes.js"
 import messageRoutes from "./routes/message.routes.js"
 
-dotenv.config()
+import { io, server, app } from "./lib/socket.js"
 
-const app = express()
+dotenv.config()
 
 // aumentar el límite para payloads grandes (imágenes en base64)
 app.use(express.json({ limit: "10mb" }))
@@ -26,7 +26,7 @@ app.use("/api/messages", messageRoutes)
 
 const PORT = process.env.PORT || 5001
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`)
   connectDB()
 })
