@@ -114,6 +114,8 @@ export const updateProfile = async (req, res) => {
       folder: "chat-app/profile-pics",
       public_id: `${userId}-profile-pic`,
       overwrite: true,
+      invalidate: true, // purge cached versions so the new image shows up immediately
+      resource_type: "auto", // allow data URLs/base64
     })
 
     const updatedUser = await User.findByIdAndUpdate(

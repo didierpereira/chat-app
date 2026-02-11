@@ -8,10 +8,8 @@ import { protectRoute } from "../middleware/auth.middleware.js"
 
 const router = Router()
 
-router.use(protectRoute)
-
-router.get("/users", getUsersForSidebar)
-router.get("/:id", getMessages)
-router.post("/send/:id", sendMessage)
+router.get("/users", protectRoute, getUsersForSidebar)
+router.get("/:id", protectRoute, getMessages)
+router.post("/send/:id", protectRoute, sendMessage)
 
 export default router
