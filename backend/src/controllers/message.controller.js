@@ -1,6 +1,7 @@
 import Message from "../models/message.model.js"
 import User from "../models/user.model.js"
 import cloudinary from "../lib/cloudinary.js"
+import { getReceiverSocketId, io } from "../lib/socket.js"
 
 export const getUsersForSidebar = async (req, res) => {
   try {
@@ -19,27 +20,26 @@ export const getUsersForSidebar = async (req, res) => {
 
 export const getMessages = async (req, res) => {
   try {
-    const { id: userToChatId } = req.params
-
-    const senderId = req.user._id
+    const { id: userToChatId } = req.params;
+    const myId = req.user._id;
 
     const messages = await Message.find({
       $or: [
-        { senderId: senderId, recipientId: userToChatId },
-        { senderId: userToChatId, recipientId: senderId },
+        { senderId: myId, receivedId: userToChatId },
+        { senderId: userToChatId, receivedId: myId },
       ],
-    })
+    });
 
-    res.status(200).json(messages)
+    res.status(200).json(messages);
   } catch (error) {
-    console.error("Error fetching messages:", error)
-    res.status(500).json({ message: "Server error" })
+    console.log("Error in getMessages controller: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
   }
-}
+};
 
 export const sendMessage = async (req, res) => {
   try {
-    const { id: recipientId } = req.params
+    const { id: receivedId } = req.params
     const { text, image } = req.body
 
     const senderId = req.user._id
@@ -52,14 +52,17 @@ export const sendMessage = async (req, res) => {
 
     const newMessage = new Message({
       senderId,
-      recipientId,
+      receivedId,
       text,
       image: imageUrl,
     })
 
     await newMessage.save()
 
-    // todo: realtime functionality goes here => socket.io
+    const receiverSocketId = getReceiverSocketId(receivedId)
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("newMessage", newMessage)
+    }
 
     res.status(201).json(newMessage)
   } catch (error) {
