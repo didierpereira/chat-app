@@ -5,7 +5,7 @@ import useChatStore from "../../store/useChatStore";
 import {useAuthStore} from "../../store/useAuthStore";
 
 const Sidebar = () => {
-  const { getUsers, users, selectedUser, setSelectedUser, isUsersLoading } = useChatStore();
+  const { getUsers, users, typingUsers, selectedUser, setSelectedUser, isUsersLoading } = useChatStore();
 
   const { onlineUsers } = useAuthStore();
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
@@ -65,13 +65,23 @@ const Sidebar = () => {
                   rounded-full ring-2 ring-zinc-900"
                 />
               )}
+
+              {user.unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-4 px-1 rounded-full bg-rose-500 text-white text-xs flex items-center justify-center">
+                  {user.unreadCount}
+                </span>
+              )}
             </div>
 
             {/* User info - only visible on larger screens */}
             <div className="hidden lg:block text-left min-w-0">
               <div className="font-medium truncate">{user.fullName}</div>
               <div className="text-sm text-zinc-400">
-                {onlineUsers.includes(user._id) ? "Online" : "Offline"}
+                {typingUsers?.[user._id]
+                  ? "Escribiendo..."
+                  : onlineUsers.includes(user._id)
+                  ? "Online"
+                  : "Offline"}
               </div>
             </div>
           </button>

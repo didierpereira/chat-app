@@ -2,12 +2,16 @@ import { useRef, useState } from "react";
 import { Image, Send, X } from "lucide-react";
 import toast from "react-hot-toast";
 import useChatStore from "../../store/useChatStore";
+import { useAuthStore } from "../../store/useAuthStore";
 
 const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
   const { sendMessage } = useChatStore();
+  const { authUser, socket } = useAuthStore();
+  const { selectedUser } = useChatStore();
+  const typingTimeoutRef = useRef(null);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -38,6 +42,11 @@ const MessageInput = () => {
         image: imagePreview,
       });
 
+      // notify stop typing after send
+      if (socket && selectedUser) {
+        socket.emit("stopTyping", { to: selectedUser._id, from: authUser._id })
+      }
+
       // Clear form
       setText("");
       setImagePreview(null);
@@ -46,6 +55,26 @@ const MessageInput = () => {
       console.error("Failed to send message:", error);
     }
   };
+
+  const emitTyping = () => {
+    if (!socket || !selectedUser) return
+    socket.emit("typing", { to: selectedUser._id, from: authUser._id })
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+    typingTimeoutRef.current = setTimeout(() => {
+      socket.emit("stopTyping", { to: selectedUser._id, from: authUser._id })
+    }, 1500)
+  }
+
+  const handleFocus = () => {
+    if (!socket || !selectedUser) return
+    socket.emit("typing", { to: selectedUser._id, from: authUser._id })
+  }
+
+  const handleBlur = () => {
+    if (!socket || !selectedUser) return
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+    socket.emit("stopTyping", { to: selectedUser._id, from: authUser._id })
+  }
 
   return (
     <div className="p-4 w-full">
@@ -76,7 +105,9 @@ const MessageInput = () => {
             className="w-full input input-bordered rounded-lg input-sm sm:input-md"
             placeholder="Type a message..."
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => { setText(e.target.value); emitTyping() }}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
           />
           <input
             type="file"

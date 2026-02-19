@@ -13,8 +13,8 @@ const ChatContainer = () => {
     getMessages,
     isMessagesLoading,
     selectedUser,
-    subscribeToMessages,
-    unsubscribeFromMessages,
+    startSocketListeners,
+    stopSocketListeners,
   } = useChatStore()
   const { authUser } = useAuthStore()
   const messageEndRef = useRef(null)
@@ -23,14 +23,15 @@ const ChatContainer = () => {
     if (!selectedUser?._id) return
     getMessages(selectedUser)
 
-    subscribeToMessages()
+    // start global socket listeners (newMessage, typing)
+    startSocketListeners()
 
-    return () => unsubscribeFromMessages()
+    return () => stopSocketListeners()
   }, [
     selectedUser._id,
     getMessages,
-    subscribeToMessages,
-    unsubscribeFromMessages,
+    startSocketListeners,
+    stopSocketListeners,
   ])
 
   useEffect(() => {

@@ -6,6 +6,7 @@ import { useAuthStore } from "./useAuthStore.js"
 const useChatStore = create((set, get) => ({
   messages: [],
   users: [],
+  typingUsers: {},
   selectedUser: null,
   isUsersLoading: false,
   isMessagesLoading: false,
@@ -14,6 +15,7 @@ const useChatStore = create((set, get) => ({
     set({ isUsersLoading: true })
     try {
       const response = await axiosInstance.get("/messages/users")
+      // use unreadCount provided by server when available
       set({ users: response.data })
     } catch (error) {
       toast.error("Failed to load users")
@@ -69,8 +71,85 @@ const useChatStore = create((set, get) => ({
     socket.off("newMessage")
   },
 
+  startSocketListeners: () => {
+    const socket = useAuthStore.getState().socket
+    if (!socket) return
+
+    const playNotification = () => {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext
+        const ctx = new AudioCtx()
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = "sine"
+        osc.frequency.value = 1000
+        gain.gain.value = 0.02
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start()
+        setTimeout(() => {
+          osc.stop()
+          ctx.close()
+        }, 150)
+      } catch (e) {
+        // fallback: ignore if audio can't be played
+        console.error("Notification sound error:", e)
+      }
+    }
+
+    socket.on("newMessage", (newMessage) => {
+      const selectedUser = get().selectedUser
+      const senderId = String(newMessage.senderId)
+      if (senderId === selectedUser?._id) {
+        set({ messages: [...get().messages, newMessage] })
+      } else {
+        // increment unread count for sender (compare by string id)
+        set({
+          users: get().users.map((u) =>
+            String(u._id) === senderId
+              ? { ...u, unreadCount: (u.unreadCount || 0) + 1 }
+              : u,
+          ),
+        })
+        // play sound to notify user of incoming message
+        playNotification()
+      }
+    })
+
+    socket.on("typing", ({ from }) => {
+      set({ typingUsers: { ...get().typingUsers, [from]: true } })
+    })
+
+    socket.on("stopTyping", ({ from }) => {
+      const next = { ...get().typingUsers }
+      delete next[from]
+      set({ typingUsers: next })
+    })
+  },
+
+  stopSocketListeners: () => {
+    const socket = useAuthStore.getState().socket
+    if (!socket) return
+    socket.off("newMessage")
+    socket.off("typing")
+    socket.off("stopTyping")
+  },
+
   setSelectedUser: (user) => {
+    // mark messages as read on the server, then clear unread count locally
     set({ selectedUser: user })
+    try {
+      // best-effort call to mark messages as read
+      axiosInstance.post(`/messages/mark-read/${user._id}`)
+    } catch (e) {
+      // ignore failure
+      console.error("Failed to mark messages read:", e)
+    }
+
+    set({
+      users: get().users.map((u) => (u._id === user._id ? { ...u, unreadCount: 0 } : u)),
+      typingUsers: { ...get().typingUsers, [user._id]: false },
+    })
   },
 }))
 
